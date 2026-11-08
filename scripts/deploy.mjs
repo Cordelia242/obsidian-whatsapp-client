@@ -1,4 +1,5 @@
 // Copies the build output into the vault's plugin folder.
+import process from "node:process";
 // Vault path: OBSIDIAN_VAULT env var, or the sibling "Complices" folder by default.
 import { copyFileSync, existsSync, mkdirSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";

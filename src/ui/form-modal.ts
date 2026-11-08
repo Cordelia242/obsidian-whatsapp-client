@@ -40,7 +40,8 @@ export abstract class FormModal extends Modal {
           .onClick(() => void this.trySubmit()),
       );
     this.contentEl.addEventListener("keydown", (event) => {
-      if (event.key === "Enter" && !(event.target instanceof HTMLTextAreaElement)) {
+      const target = event.target as Node | null;
+      if (event.key === "Enter" && !target?.instanceOf(HTMLTextAreaElement)) {
         event.preventDefault();
         void this.trySubmit();
       }

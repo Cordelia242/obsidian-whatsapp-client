@@ -3,6 +3,7 @@ import type { BaleService } from "../catalog/bale-service";
 import { CreateGarmentModal } from "../catalog/create-garment-modal";
 import type { GarmentService } from "../catalog/garment-service";
 import type { CustomerService } from "../customers/customer-service";
+import { scalarText } from "../shared/json";
 import { isoDate, unlink } from "../shared/notes";
 import type { NoteRecord } from "../shared/vault-port";
 import { FormModal } from "../ui/form-modal";
@@ -86,8 +87,8 @@ function withAliases(note: NoteRecord): string {
 
 function garmentLabel(note: NoteRecord): string {
   const type = unlink(note.frontmatter.Tipo);
-  const price = note.frontmatter.Precio;
-  const extra = [type, price !== undefined && price !== null && price !== "" ? `${price} Bs` : ""].filter(Boolean);
+  const price = scalarText(note.frontmatter.Precio);
+  const extra = [type, price ? `${price} Bs` : ""].filter(Boolean);
   return extra.length ? `${note.basename} (${extra.join(" · ")})` : note.basename;
 }
 

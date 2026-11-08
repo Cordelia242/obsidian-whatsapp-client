@@ -1,4 +1,5 @@
 import { GARMENT_CATEGORY } from "../catalog/garment-service";
+import { scalarText } from "../shared/json";
 import { link, sanitizeBasename, sortedUnique, unlink } from "../shared/notes";
 import type { NoteRecord, VaultPort } from "../shared/vault-port";
 
@@ -39,7 +40,7 @@ export class OrderService {
   byCustomer(customer: string): NoteRecord[] {
     return this.all()
       .filter((n) => unlink(n.frontmatter.cliente) === customer)
-      .sort((a, b) => String(b.frontmatter.fecha ?? "").localeCompare(String(a.frontmatter.fecha ?? "")));
+      .sort((a, b) => scalarText(b.frontmatter.fecha).localeCompare(scalarText(a.frontmatter.fecha)));
   }
 
   /**

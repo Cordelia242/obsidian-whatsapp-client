@@ -1,3 +1,4 @@
+import { scalarText } from "../shared/json";
 import { requireNewName } from "../shared/new-note-name";
 import { link, numberOrText } from "../shared/notes";
 import type { NoteRecord, VaultPort } from "../shared/vault-port";
@@ -20,7 +21,7 @@ export class BaleService {
   /** Newest first, as the Prenda template offered them. */
   all(): NoteRecord[] {
     return this.vault.notesByCategory(BALE_CATEGORY).sort((a, b) => {
-      const byDate = String(b.frontmatter.fecha ?? "").localeCompare(String(a.frontmatter.fecha ?? ""));
+      const byDate = scalarText(b.frontmatter.fecha).localeCompare(scalarText(a.frontmatter.fecha));
       return byDate || a.basename.localeCompare(b.basename);
     });
   }

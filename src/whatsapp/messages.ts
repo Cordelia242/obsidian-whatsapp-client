@@ -1,4 +1,5 @@
 import { phoneFromJid } from "../customers/phone";
+import { asNumber, asObject, asString } from "../shared/json";
 
 /** A WhatsApp message reduced to what the chat view shows. */
 export interface ChatMessage {
@@ -42,45 +43,46 @@ const OTHER_LABELS: Record<string, string> = {
   reactionMessage: "Reacción",
 };
 
-type Json = Record<string, any>;
-
-export function parseMessage(record: Json): ChatMessage {
-  const key: Json = record.key ?? {};
-  const message: Json = record.message ?? {};
+export function parseMessage(raw: unknown): ChatMessage {
+  const record = asObject(raw);
+  const key = asObject(record.key);
+  const message = asObject(record.message);
   const base = {
-    id: String(key.id ?? ""),
-    jid: String(key.remoteJid ?? ""),
-    fromMe: Boolean(key.fromMe),
-    timestamp: Number(record.messageTimestamp ?? 0) * 1000,
-    pushName: record.pushName ?? undefined,
-    altJid: typeof key.remoteJidAlt === "string" ? key.remoteJidAlt : undefined,
+    id: asString(key.id) ?? "",
+    jid: asString(key.remoteJid) ?? "",
+    fromMe: key.fromMe === true,
+    timestamp: asNumber(record.messageTimestamp) * 1000,
+    pushName: asString(record.pushName),
+    altJid: asString(key.remoteJidAlt),
   };
 
-  const text = message.conversation ?? message.extendedTextMessage?.text;
-  if (typeof text === "string") return { ...base, kind: "text", text };
+  const text = asString(message.conversation) ?? asString(asObject(message.extendedTextMessage).text);
+  if (text !== undefined) return { ...base, kind: "text", text };
 
   if (message.imageMessage) {
-    return { ...base, kind: "image", caption: message.imageMessage.caption || undefined };
+    return { ...base, kind: "image", caption: asString(asObject(message.imageMessage).caption) || undefined };
   }
 
   const type = Object.keys(message).find((k) => k in OTHER_LABELS);
   return { ...base, kind: "other", label: type ? OTHER_LABELS[type] : "Mensaje" };
 }
 
-export function parseChat(record: Json): Chat | null {
-  const jid = String(record.remoteJid ?? "");
+export function parseChat(raw: unknown): Chat | null {
+  const record = asObject(raw);
+  const jid = asString(record.remoteJid) ?? "";
   if (!jid || jid === "status@broadcast") return null;
-  const updatedAt = record.updatedAt ? Date.parse(record.updatedAt) : 0;
+  const updatedAtText = asString(record.updatedAt);
+  const updatedAt = updatedAtText ? Date.parse(updatedAtText) : 0;
   const lastMessage = record.lastMessage ? parseMessage(record.lastMessage) : undefined;
   const contactName = lastMessage && !lastMessage.fromMe ? lastMessage.pushName : undefined;
   return {
     jid,
     phone: phoneOfChat(jid, lastMessage ? [lastMessage] : []),
     lid: jid.endsWith("@lid") ? jid : undefined,
-    name: record.pushName || contactName || jid.split("@")[0]!,
-    profilePicUrl: record.profilePicUrl || undefined,
+    name: asString(record.pushName) || contactName || jid.split("@")[0]!,
+    profilePicUrl: asString(record.profilePicUrl) || undefined,
     updatedAt: Number.isNaN(updatedAt) ? 0 : updatedAt,
-    unreadCount: Number(record.unreadCount ?? 0),
+    unreadCount: asNumber(record.unreadCount),
     lastMessage,
   };
 }

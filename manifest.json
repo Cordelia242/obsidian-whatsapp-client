@@ -1,9 +1,9 @@
 {
   "id": "whatsapp-client",
   "name": "WhatsApp Client",
-  "version": "0.1.0",
-  "minAppVersion": "1.5.0",
-  "description": "WhatsApp client for Obsidian (Evolution API) with customer and order workflows.",
+  "version": "0.1.1",
+  "minAppVersion": "1.13.0",
+  "description": "Chat with customers through Evolution API and create customers and orders from each conversation.",
   "author": "Cordelia242",
   "isDesktopOnly": false
 }

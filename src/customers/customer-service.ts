@@ -1,3 +1,4 @@
+import { scalarText } from "../shared/json";
 import { requireNewName } from "../shared/new-note-name";
 import { link, sortedUnique, unlink } from "../shared/notes";
 import type { NoteRecord, VaultPort } from "../shared/vault-port";
@@ -72,7 +73,7 @@ export class CustomerService {
     const phone = normalizePhone(chat.phone, countryCode);
     if (!phone && !chat.lid) throw new Error("Este chat no tiene teléfono ni LID para vincular");
 
-    const previous = phone ? String(frontmatter.Telefono ?? "") : "";
+    const previous = phone ? scalarText(frontmatter.Telefono) : "";
     await this.vault.updateFrontmatter(customerPath, (fm) => {
       if (phone) fm.Telefono = localPhone(phone, countryCode);
       else fm[LID_PROPERTY] = chat.lid;

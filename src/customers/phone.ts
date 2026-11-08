@@ -3,11 +3,12 @@
  * The vault stores them as typed (usually local, "70000001"); WhatsApp JIDs carry them
  * international ("59170000001@s.whatsapp.net").
  */
+import { scalarText } from "../shared/json";
+
 const LOCAL_MAX_DIGITS = 8;
 
 export function normalizePhone(raw: unknown, countryCode: string): string | null {
-  if (raw === null || raw === undefined) return null;
-  let digits = String(raw).replace(/\D/g, "");
+  let digits = scalarText(raw).replace(/\D/g, "");
   if (digits.startsWith("00")) digits = digits.slice(2);
   if (!digits) return null;
   return digits.length <= LOCAL_MAX_DIGITS ? `${countryCode}${digits}` : digits;

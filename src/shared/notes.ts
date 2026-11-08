@@ -1,3 +1,5 @@
+import { scalarText } from "./json";
+
 /** Wraps a note name in a wikilink, as the vault stores relations: `[[Santa Cruz]]`. */
 export function link(name: string): string {
   return `[[${name}]]`;
@@ -5,7 +7,7 @@ export function link(name: string): string {
 
 /** Inverse of `link`: `[[Santa Cruz|SCZ]]` → `Santa Cruz`. Plain values are returned trimmed. */
 export function unlink(value: unknown): string {
-  return String(value ?? "")
+  return scalarText(value)
     .replace(/^\[\[|\]\]$/g, "")
     .split("|")[0]!
     .trim();

@@ -1,8 +1,9 @@
-import { type App, Notice, PluginSettingTab, Setting } from "obsidian";
-import { FileSuggestModal, IMAGE_EXTENSIONS } from "../shared/file-suggest-modal";
+import { type App, PluginSettingTab, type SettingDefinitionItem } from "obsidian";
+import { IMAGE_EXTENSIONS } from "../shared/file-suggest-modal";
 import type WhatsAppClientPlugin from "../main";
 import { MIN_POLL_SECONDS } from "./settings";
 
+/** Declarative settings tab, so every setting also shows up in Obsidian's settings search. */
 export class WhatsAppClientSettingTab extends PluginSettingTab {
   constructor(
     app: App,
@@ -11,118 +12,119 @@ export class WhatsAppClientSettingTab extends PluginSettingTab {
     super(app, plugin);
   }
 
-  display(): void {
-    const { containerEl } = this;
-    const settings = this.plugin.settings;
-    containerEl.empty();
+  getSettingDefinitions(): SettingDefinitionItem[] {
+    return [
+      {
+        type: "group",
+        heading: "Conexión · Evolution API",
+        items: [
+          {
+            name: "URL del servidor",
+            desc: "Por ejemplo https://evo.tu-dominio.com. Usá siempre HTTPS.",
+            control: {
+              type: "text",
+              key: "baseUrl",
+              placeholder: "https://",
+              validate: (value) => (value && !/^https?:\/\//.test(value.trim()) ? "Tiene que empezar con https://" : undefined),
+            },
+          },
+          { name: "Instancia", control: { type: "text", key: "instance" } },
+          {
+            name: "API key",
+            desc: "Se guarda en la configuración del plugin. Si usás LiveSync, activá el cifrado de extremo a extremo.",
+            aliases: ["apikey", "clave"],
+            render: (setting) => {
+              setting.addText((text) => {
+                text.inputEl.type = "password";
+                text.setValue(this.plugin.settings.apiKey).onChange(async (value) => {
+                  this.plugin.settings.apiKey = value.trim();
+                  await this.plugin.saveSettings();
+                });
+              });
+            },
+          },
+          {
+            name: "Probar conexión",
+            desc: "Consulta el estado de la instancia.",
+            render: (setting) => {
+              setting.addButton((button) =>
+                button.setButtonText("Probar").onClick(async () => {
+                  button.setDisabled(true);
+                  try {
+                    const state = await this.plugin.evolution.connectionState();
+                    setting.setDesc(state === "open" ? "Conectado · estado de la instancia: open" : `Estado de la instancia: ${state}`);
+                  } catch (error) {
+                    setting.setDesc(`Error: ${(error as Error).message}`);
+                  } finally {
+                    button.setDisabled(false);
+                  }
+                }),
+              );
+            },
+          },
+          {
+            name: "Código de país",
+            desc: "Se agrega a los teléfonos locales para encontrar al cliente de cada chat.",
+            control: {
+              type: "text",
+              key: "countryCode",
+              validate: (value) => (/^\d{1,4}$/.test(value.trim()) ? undefined : "Solo números, por ejemplo 591"),
+            },
+          },
+          {
+            name: "Actualizar chats cada (segundos)",
+            desc: `Solo mientras la vista de WhatsApp está abierta. Mínimo ${MIN_POLL_SECONDS}.`,
+            control: {
+              type: "number",
+              key: "pollSeconds",
+              min: MIN_POLL_SECONDS,
+              step: 1,
+              validate: (value) => (value >= MIN_POLL_SECONDS ? undefined : `El mínimo es ${MIN_POLL_SECONDS}`),
+            },
+          },
+        ],
+      },
+      {
+        type: "group",
+        heading: "Pagos",
+        items: [
+          {
+            name: "QR de pago",
+            desc: "Imagen de la bóveda que se envía con el botón \"Enviar QR\".",
+            control: {
+              type: "file",
+              key: "qrPath",
+              placeholder: "Buscá la imagen del QR",
+              filter: (file) => IMAGE_EXTENSIONS.includes(file.extension.toLowerCase()),
+              validate: (value) => (value && !this.app.vault.getFileByPath(value) ? `No se encontró ${value}` : undefined),
+            },
+          },
+          {
+            name: "Vista previa del QR",
+            searchable: false,
+            visible: () => Boolean(this.app.vault.getFileByPath(this.plugin.settings.qrPath)),
+            render: (setting) => {
+              const file = this.app.vault.getFileByPath(this.plugin.settings.qrPath);
+              if (!file) return;
+              setting.controlEl.createEl("img", {
+                cls: "cw-qr-preview",
+                attr: { src: this.app.vault.getResourcePath(file), alt: "Vista previa del QR" },
+              });
+            },
+          },
+          {
+            name: "Texto que acompaña al QR",
+            desc: "Opcional. {nombre} se reemplaza por el nombre del cliente.",
+            control: { type: "textarea", key: "qrCaption", rows: 3 },
+          },
+        ],
+      },
+    ];
+  }
 
-    new Setting(containerEl).setName("Conexión · Evolution API").setHeading();
-
-    new Setting(containerEl)
-      .setName("URL del servidor")
-      .setDesc("Por ejemplo https://evo.tu-dominio.com. Usá siempre HTTPS.")
-      .addText((text) =>
-        text.setPlaceholder("https://").setValue(settings.baseUrl).onChange(async (value) => {
-          settings.baseUrl = value.trim();
-          await this.plugin.saveSettings();
-        }),
-      );
-
-    new Setting(containerEl).setName("Instancia").addText((text) =>
-      text.setValue(settings.instance).onChange(async (value) => {
-        settings.instance = value.trim();
-        await this.plugin.saveSettings();
-      }),
-    );
-
-    new Setting(containerEl)
-      .setName("API key")
-      .setDesc("Se guarda en la configuración del plugin. Si usás LiveSync, activá el cifrado de extremo a extremo.")
-      .addText((text) => {
-        text.inputEl.type = "password";
-        text.setValue(settings.apiKey).onChange(async (value) => {
-          settings.apiKey = value.trim();
-          await this.plugin.saveSettings();
-        });
-      });
-
-    const status = new Setting(containerEl).setName("Probar conexión").setDesc("Consulta el estado de la instancia.");
-    status.addButton((button) =>
-      button.setButtonText("Probar").onClick(async () => {
-        button.setDisabled(true);
-        try {
-          const state = await this.plugin.evolution.connectionState();
-          status.setDesc(state === "open" ? "Conectado · estado de la instancia: open" : `Estado de la instancia: ${state}`);
-        } catch (error) {
-          status.setDesc(`Error: ${(error as Error).message}`);
-        } finally {
-          button.setDisabled(false);
-        }
-      }),
-    );
-
-    new Setting(containerEl)
-      .setName("Código de país")
-      .setDesc("Se agrega a los teléfonos locales para encontrar al cliente de cada chat.")
-      .addText((text) =>
-        text.setValue(settings.countryCode).onChange(async (value) => {
-          settings.countryCode = value.replace(/\D/g, "");
-          await this.plugin.saveSettings();
-        }),
-      );
-
-    new Setting(containerEl)
-      .setName("Actualizar chats cada (segundos)")
-      .setDesc(`Solo mientras la vista de WhatsApp está abierta. Mínimo ${MIN_POLL_SECONDS}.`)
-      .addText((text) =>
-        text.setValue(String(settings.pollSeconds)).onChange(async (value) => {
-          const seconds = Number(value);
-          if (!Number.isFinite(seconds) || seconds < MIN_POLL_SECONDS) return;
-          settings.pollSeconds = Math.round(seconds);
-          await this.plugin.saveSettings();
-        }),
-      );
-
-    new Setting(containerEl).setName("Pagos").setHeading();
-
-    const qr = new Setting(containerEl)
-      .setName("QR de pago")
-      .setDesc(settings.qrPath ? settings.qrPath : "Ninguna imagen elegida. El botón \"Enviar QR\" la envía al chat.");
-    qr.addButton((button) =>
-      button.setButtonText(settings.qrPath ? "Cambiar…" : "Elegir…").onClick(() => {
-        new FileSuggestModal(this.app, IMAGE_EXTENSIONS, async (file) => {
-          settings.qrPath = file.path;
-          await this.plugin.saveSettings();
-          this.display();
-        }, "Elegí la imagen del QR de pago").open();
-      }),
-    );
-    if (settings.qrPath) {
-      qr.addExtraButton((button) =>
-        button.setIcon("x").setTooltip("Quitar").onClick(async () => {
-          settings.qrPath = "";
-          await this.plugin.saveSettings();
-          this.display();
-        }),
-      );
-      const file = this.app.vault.getFileByPath(settings.qrPath);
-      if (file) {
-        qr.controlEl.prepend(
-          createEl("img", { cls: "cw-qr-preview", attr: { src: this.app.vault.getResourcePath(file), alt: "Vista previa del QR" } }),
-        );
-      } else {
-        qr.setDesc(`No se encontró ${settings.qrPath}. Elegí otra imagen.`);
-      }
-    }
-
-    new Setting(containerEl)
-      .setName("Texto que acompaña al QR")
-      .setDesc("Opcional. {nombre} se reemplaza por el nombre del cliente.")
-      .addTextArea((text) =>
-        text.setValue(settings.qrCaption).onChange(async (value) => {
-          settings.qrCaption = value;
-          await this.plugin.saveSettings();
-        }),
-      );
+  async setControlValue(key: string, value: unknown): Promise<void> {
+    await super.setControlValue(key, typeof value === "string" ? value.trim() : value);
+    // The preview row depends on the chosen QR file.
+    if (key === "qrPath") this.update();
   }
 }

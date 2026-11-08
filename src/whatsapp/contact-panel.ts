@@ -4,6 +4,7 @@ import type { ChatIdentity } from "../customers/customer-service";
 import { normalizePhone } from "../customers/phone";
 import type WhatsAppClientPlugin from "../main";
 import { CreateOrderModal } from "../orders/create-order-modal";
+import { scalarText } from "../shared/json";
 import { unlink } from "../shared/notes";
 import type { NoteRecord } from "../shared/vault-port";
 import { ConfirmModal } from "../ui/confirm-modal";
@@ -77,7 +78,7 @@ function renderCustomers(container: HTMLElement, ctx: ContactPanelContext, custo
       event.preventDefault();
       void ctx.app.workspace.openLinkText(customer.path, "", false);
     });
-    const details = [unlink(customer.frontmatter.Ciudad), customer.frontmatter.fecha ? `cliente desde ${customer.frontmatter.fecha}` : ""];
+    const details = [unlink(customer.frontmatter.Ciudad), scalarText(customer.frontmatter.fecha) ? `cliente desde ${scalarText(customer.frontmatter.fecha)}` : ""];
     card.createDiv({ cls: "cw-hint", text: details.filter(Boolean).join(" · ") });
 
     const actions = card.createDiv({ cls: "cw-actions" });
@@ -117,7 +118,7 @@ async function linkChat(ctx: ContactPanelContext, customer: NoteRecord): Promise
     new ConfirmModal(
       ctx.app,
       "Reemplazar teléfono",
-      `${customer.basename} tiene el teléfono ${String(customer.frontmatter.Telefono)}. ¿Reemplazarlo por +${phone}?`,
+      `${customer.basename} tiene el teléfono ${scalarText(customer.frontmatter.Telefono)}. ¿Reemplazarlo por +${phone}?`,
       "Reemplazar",
       () => void apply(),
     ).open();

@@ -68,7 +68,7 @@ describe("EvolutionClient", () => {
         profilePicUrl: undefined,
         updatedAt: Date.parse("2026-11-08T18:32:00.000Z"),
         unreadCount: 2,
-        lastMessage: expect.objectContaining({ id: "A1", kind: "text", text: "¿Todavía tenés la coreana C50?" }),
+        lastMessage: expect.objectContaining({ id: "A1", kind: "text", text: "¿Todavía tenés la coreana C50?" }) as unknown,
       },
     ]);
   });

@@ -42,8 +42,13 @@ The API key is stored in the plugin's `data.json`. If the vault is synced (Self-
 
 ```sh
 pnpm test            # domain tests (vitest)
+pnpm lint            # eslint with eslint-plugin-obsidianmd (same rules as the community review)
 pnpm build           # typecheck + production bundle
 pnpm dev             # watch mode
 ```
+
+## Releasing
+
+Bump `version` in `manifest.json` and `package.json`, commit, then push a tag with exactly that version (`git tag 0.2.0 && git push origin 0.2.0`). The Release workflow lints, tests, builds, attests the build provenance of `main.js`, `manifest.json` and `styles.css`, and publishes the GitHub release that BRAT installs.
 
 Domain services (`src/customers`, `src/orders`, `src/catalog`) depend only on `VaultPort`; the Evolution client depends only on `HttpPort`. Obsidian adapters live in `src/shared/obsidian-vault.ts` and `src/whatsapp/obsidian-http.ts`.

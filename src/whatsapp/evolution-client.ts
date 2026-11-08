@@ -1,4 +1,5 @@
 import type { HttpPort } from "./http-port";
+import { asArray, asNumber, asObject, asString } from "../shared/json";
 import { type Chat, type ChatMessage, parseChat, parseMessage } from "./messages";
 
 export interface EvolutionConfig {
@@ -34,28 +35,28 @@ export class EvolutionClient {
   ) {}
 
   async connectionState(): Promise<string> {
-    const json = (await this.call("GET", "instance/connectionState")) as any;
-    return String(json?.instance?.state ?? "unknown");
+    const json = await this.call("GET", "instance/connectionState");
+    return asString(asObject(asObject(json).instance).state) ?? "unknown";
   }
 
   async findChats(): Promise<Chat[]> {
     const json = await this.call("POST", "chat/findChats", {});
-    return (Array.isArray(json) ? json : [])
+    return asArray(json)
       .map(parseChat)
       .filter((c): c is Chat => c !== null);
   }
 
   /** Page 1 holds the newest messages; each page is returned oldest first. */
   async findMessages(jid: string, page = 1): Promise<{ messages: ChatMessage[]; pages: number }> {
-    const json = (await this.call("POST", "chat/findMessages", {
+    const json = await this.call("POST", "chat/findMessages", {
       where: { key: { remoteJid: jid } },
       page,
       offset: PAGE_SIZE,
-    })) as any;
-    const records: unknown[] = json?.messages?.records ?? [];
+    });
+    const messages = asObject(asObject(json).messages);
     return {
-      messages: records.map((r) => parseMessage(r as any)).sort((a, b) => a.timestamp - b.timestamp),
-      pages: Number(json?.messages?.pages ?? 1),
+      messages: asArray(messages.records).map(parseMessage).sort((a, b) => a.timestamp - b.timestamp),
+      pages: asNumber(messages.pages) || 1,
     };
   }
 
@@ -75,12 +76,15 @@ export class EvolutionClient {
   }
 
   async mediaBase64(messageId: string): Promise<{ base64: string; mimetype: string }> {
-    const json = (await this.call("POST", "chat/getBase64FromMediaMessage", {
-      message: { key: { id: messageId } },
-      convertToMp4: false,
-    })) as any;
-    if (!json?.base64) throw new EvolutionError("El servidor no devolvió la imagen");
-    return { base64: String(json.base64), mimetype: String(json.mimetype ?? "image/jpeg") };
+    const json = asObject(
+      await this.call("POST", "chat/getBase64FromMediaMessage", {
+        message: { key: { id: messageId } },
+        convertToMp4: false,
+      }),
+    );
+    const base64 = asString(json.base64);
+    if (!base64) throw new EvolutionError("El servidor no devolvió la imagen");
+    return { base64, mimetype: asString(json.mimetype) ?? "image/jpeg" };
   }
 
   private async call(method: "GET" | "POST", route: string, body?: unknown): Promise<unknown> {
@@ -98,8 +102,8 @@ export class EvolutionClient {
 }
 
 function errorDetail(json: unknown): string {
-  const data = json as any;
-  const message = data?.response?.message ?? data?.message ?? data?.error;
-  if (Array.isArray(message)) return message.map(String).join(", ");
-  return message ? String(message) : "error desconocido";
+  const data = asObject(json);
+  const message = asObject(data.response).message ?? data.message ?? data.error;
+  if (Array.isArray(message)) return message.map((m) => (typeof m === "string" ? m : JSON.stringify(m))).join(", ");
+  return typeof message === "string" && message ? message : "error desconocido";
 }
